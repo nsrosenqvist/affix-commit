@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# sprig-commit — inject ticket IDs from branch names into conventional commit scopes
+# https://github.com/nsrosenqvist/sprig-commit
+set -euo pipefail
+
+# --- Defaults ---
+ticket_pattern='[A-Z]+-[0-9]+'
+ignored_branches='^(master|main|dev|develop|development|release)$'
+ignore_missing_tickets=false
+default_type=chore
+
+# --- Config loading ---
+load_config() {
+  local config_file=""
+  local repo_root
+
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
+
+  if [[ -f "${repo_root}/.sprig-commit.cfg" ]]; then
+    config_file="${repo_root}/.sprig-commit.cfg"
+  elif [[ -f "${HOME}/.sprig-commit.cfg" ]]; then
+    config_file="${HOME}/.sprig-commit.cfg"
+  fi
+
+  if [[ -n "${config_file}" ]]; then
+    # Security: only source lines that match safe key=value patterns.
+    # Allow regex metacharacters (^$|()[]+ etc.) but block command substitution
+    # ($(...), `...`) and semicolons.
+    local safe_lines
+    safe_lines=$(grep -E '^\s*(ticket_pattern|ignored_branches|ignore_missing_tickets|default_type)\s*=' "$config_file" \
+      | grep -vE '`|\$\(' \
+      | grep -E "^[a-z_]+=['\"]?[^;\`]*['\"]?\s*$" || true)
+
+    if [[ -n "${safe_lines}" ]]; then
+      eval "${safe_lines}"
+    fi
+  fi
+}
+
+# --- Main ---
+main() {
+  local commit_msg_file="${1:-}"
+
+  if [[ -z "${commit_msg_file}" ]]; then
+    echo "sprig-commit: error: commit message file path required (passed by git)" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "${commit_msg_file}" ]]; then
+    echo "sprig-commit: error: commit message file not found: ${commit_msg_file}" >&2
+    exit 1
+  fi
+
+  load_config
+
+  # Get current branch name; exit silently on detached HEAD
+  local branch
+  branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || exit 0
+
+  # Check if branch is ignored
+  if [[ "${branch}" =~ ${ignored_branches} ]]; then
+    exit 0
+  fi
+
+  # Extract ticket from branch name
+  local ticket=""
+  if [[ "${branch}" =~ ${ticket_pattern} ]]; then
+    ticket="${BASH_REMATCH[0]}"
+  fi
+
+  if [[ -z "${ticket}" ]]; then
+    if [[ "${ignore_missing_tickets}" == "true" ]]; then
+      exit 0
+    else
+      echo "sprig-commit: error: no ticket ID found in branch '${branch}'" >&2
+      echo "sprig-commit: set ignore_missing_tickets=true in .sprig-commit.cfg to suppress" >&2
+      exit 1
+    fi
+  fi
+
+  # Read the commit message
+  local message
+  message="$(<"${commit_msg_file}")"
+
+  # Find the first non-comment line
+  local first_line=""
+  local first_line_num=-1
+  local line_num=0
+
+  while IFS= read -r line; do
+    # Stop at scissors separator (verbose commit / git status)
+    if [[ "${line}" == *"------------------------ >8 ------------------------"* ]]; then
+      break
+    fi
+
+    if [[ ! "${line}" =~ ^[[:space:]]*# ]] && [[ -n "${line}" || ${first_line_num} -eq -1 ]]; then
+      if [[ ${first_line_num} -eq -1 ]] && [[ -n "${line// /}" ]]; then
+        first_line="${line}"
+        first_line_num=${line_num}
+      fi
+    fi
+    line_num=$((line_num + 1))
+  done <<< "${message}"
+
+  # If no content line found (empty / only comments), generate a conventional commit
+  if [[ ${first_line_num} -eq -1 ]]; then
+    local generated="${default_type}(${ticket}): wip"
+    # Prepend the generated line before any existing content
+    if [[ -n "${message}" ]]; then
+      printf '%s\n%s\n' "${generated}" "${message}" > "${commit_msg_file}"
+    else
+      printf '%s\n' "${generated}" > "${commit_msg_file}"
+    fi
+    exit 0
+  fi
+
+  # If the ticket is already in the message, skip
+  if grep -qF "${ticket}" <<< "${message}"; then
+    exit 0
+  fi
+
+  # Try to parse as a conventional commit:
+  #   type(scope)!: message   or   type!: message   or   type: message
+  local cc_pattern='^([a-z]+)(\(([^)]+)\))?(!)?: (.+)$'
+  local type scope bang msg new_line
+
+  if [[ "${first_line}" =~ ${cc_pattern} ]]; then
+    type="${BASH_REMATCH[1]}"
+    scope="${BASH_REMATCH[3]:-}"
+    bang="${BASH_REMATCH[4]:-}"
+    msg="${BASH_REMATCH[5]}"
+
+    if [[ -n "${scope}" ]]; then
+      new_line="${type}(${scope}, ${ticket})${bang}: ${msg}"
+    else
+      new_line="${type}(${ticket})${bang}: ${msg}"
+    fi
+  else
+    # Not a conventional commit — wrap it in one
+    new_line="${default_type}(${ticket}): ${first_line}"
+  fi
+
+  # Replace the first content line in the file, preserving all other lines
+  local output=""
+  local replaced=false
+  line_num=0
+
+  while IFS= read -r line; do
+    if [[ ${line_num} -eq ${first_line_num} ]] && [[ "${replaced}" == "false" ]]; then
+      output+="${new_line}"$'\n'
+      replaced=true
+    else
+      output+="${line}"$'\n'
+    fi
+    line_num=$((line_num + 1))
+  done <<< "${message}"
+
+  # Write back (remove trailing newline added by the loop, preserve original ending)
+  printf '%s' "${output%$'\n'}" > "${commit_msg_file}"
+
+  # Preserve final newline if original had one
+  if [[ "${message}" == *$'\n' ]]; then
+    printf '\n' >> "${commit_msg_file}"
+  fi
+}
+
+main "$@"
