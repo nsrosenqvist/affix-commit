@@ -10,3 +10,6 @@
 
 # Test artifacts (should be cleaned up, but just in case)
 /tmp/
+
+# Companion project staged here until moved to its own repo
+/sprig-lint/

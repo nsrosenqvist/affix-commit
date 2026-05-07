@@ -10,6 +10,8 @@ You get:   feat(PROJ-123): add login page
 
 **Why?** Linking commits to issue trackers (Jira, Linear, etc.) is valuable but tedious. `sprig-commit` automates it at commit time — no plugins, no runtime dependencies, just a single bash script.
 
+Looking to *enforce* the conventional commit format as well? See the companion project [sprig-lint](https://github.com/nsrosenqvist/sprig-lint) — same philosophy, different hook. They compose cleanly (sprig-commit on `prepare-commit-msg`, sprig-lint on `commit-msg`) but each works on its own.
+
 ## How it works
 
 `sprig-commit` runs as a git `prepare-commit-msg` hook. When you commit:
@@ -198,3 +200,7 @@ shellcheck sprig-commit install.sh test/test.sh
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## See also
+
+- [sprig-lint](https://github.com/nsrosenqvist/sprig-lint) — companion git hook that validates commit messages against the Conventional Commits spec.
