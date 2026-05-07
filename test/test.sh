@@ -323,6 +323,144 @@ result=$(read_msg "${repo}")
 assert_eq "chore(PROJ-123): plain message no type" "${result}" "default_type defaults to chore"
 cleanup_repo "${repo}"
 
+# --- Branch type inference: feat ---
+describe "Branch type inference: feat from feat/ prefix"
+repo=$(setup_repo "feat/PROJ-123-add-login")
+run_hook "${repo}" "fixed the login bug" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "feat(PROJ-123): fixed the login bug" "${result}" "type inferred from feat/ branch prefix"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: alias feature/ -> feat ---
+describe "Branch type inference: feature/ aliased to feat"
+repo=$(setup_repo "feature/PROJ-123-add-login")
+run_hook "${repo}" "added login" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "feat(PROJ-123): added login" "${result}" "feature/ alias maps to feat"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: bugfix/ -> fix ---
+describe "Branch type inference: bugfix/ aliased to fix"
+repo=$(setup_repo "bugfix/PROJ-55-crash")
+run_hook "${repo}" "fixed the crash" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "fix(PROJ-55): fixed the crash" "${result}" "bugfix/ alias maps to fix"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: hotfix/ -> fix ---
+describe "Branch type inference: hotfix/ aliased to fix"
+repo=$(setup_repo "hotfix/PROJ-99-urgent")
+run_hook "${repo}" "patched it" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "fix(PROJ-99): patched it" "${result}" "hotfix/ alias maps to fix"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: unknown prefix falls back to default_type ---
+describe "Branch type inference: unknown prefix falls back to default_type"
+repo=$(setup_repo "wibble/PROJ-1-thing")
+run_hook "${repo}" "did a thing" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "chore(PROJ-1): did a thing" "${result}" "unknown prefix falls back to default_type"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: explicit conventional type wins ---
+describe "Branch type inference: explicit type in message overrides branch"
+repo=$(setup_repo "fix/PROJ-10-thing")
+run_hook "${repo}" "feat: new shiny" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "feat(PROJ-10): new shiny" "${result}" "explicit conventional type beats branch prefix"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: no slash -> no inference ---
+describe "Branch type inference: branch without slash falls back to default_type"
+repo=$(setup_repo "PROJ-7-no-prefix")
+run_hook "${repo}" "did stuff" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "chore(PROJ-7): did stuff" "${result}" "no '/' in branch -> default_type"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: empty message uses inferred type ---
+describe "Branch type inference: empty message uses inferred type"
+repo=$(setup_repo "feat/PROJ-8-wip")
+run_hook "${repo}" "" "infer_type_from_branch=true"
+result=$(read_msg "${repo}")
+assert_eq "feat(PROJ-8): wip" "${result}" "empty message uses inferred type"
+cleanup_repo "${repo}"
+
+# --- Branch type inference disabled by default ---
+describe "Branch type inference disabled by default"
+repo=$(setup_repo "feat/PROJ-123-default-off")
+run_hook "${repo}" "plain message"
+result=$(read_msg "${repo}")
+assert_eq "chore(PROJ-123): plain message" "${result}" "inference off by default; default_type used"
+cleanup_repo "${repo}"
+
+# --- Custom branch_type_map ---
+describe "Custom branch_type_map"
+repo=$(setup_repo "spike/PROJ-42-experiment")
+run_hook "${repo}" "trying things" $'infer_type_from_branch=true\nbranch_type_map=\'spike:feat,chore:chore\''
+result=$(read_msg "${repo}")
+assert_eq "feat(PROJ-42): trying things" "${result}" "custom branch_type_map honoured"
+cleanup_repo "${repo}"
+
+# --- Branch type inference: missing ticket still errors by default ---
+describe "Branch type inference: missing ticket still errors by default"
+repo=$(setup_repo "feat/my-branch")
+exit_code=0
+run_hook "${repo}" "feat: change" "infer_type_from_branch=true" || exit_code=$?
+assert_eq "1" "${exit_code}" "missing ticket errors even with inference enabled"
+result=$(read_msg "${repo}")
+assert_eq "feat: change" "${result}" "message unchanged when no ticket found"
+cleanup_repo "${repo}"
+
+# --- Branch type inference without ticket: non-conventional gets type prefix ---
+describe "Branch type inference without ticket: non-conventional message gets type"
+repo=$(setup_repo "feat/cool-ui")
+run_hook "${repo}" "My message" $'infer_type_from_branch=true\nignore_missing_tickets=true'
+result=$(read_msg "${repo}")
+assert_eq "feat: My message" "${result}" "type injected even without ticket"
+cleanup_repo "${repo}"
+
+# --- Branch type inference without ticket: alias prefix ---
+describe "Branch type inference without ticket: alias prefix"
+repo=$(setup_repo "bugfix/cool-ui")
+run_hook "${repo}" "patched it" $'infer_type_from_branch=true\nignore_missing_tickets=true'
+result=$(read_msg "${repo}")
+assert_eq "fix: patched it" "${result}" "alias resolved without ticket"
+cleanup_repo "${repo}"
+
+# --- Branch type inference without ticket: empty message ---
+describe "Branch type inference without ticket: empty message"
+repo=$(setup_repo "feat/cool-ui")
+run_hook "${repo}" "" $'infer_type_from_branch=true\nignore_missing_tickets=true'
+result=$(read_msg "${repo}")
+assert_eq "feat: wip" "${result}" "empty message gets type without ticket"
+cleanup_repo "${repo}"
+
+# --- Branch type inference without ticket: conventional message left untouched ---
+describe "Branch type inference without ticket: conventional message untouched"
+repo=$(setup_repo "feat/cool-ui")
+run_hook "${repo}" "fix: already typed" $'infer_type_from_branch=true\nignore_missing_tickets=true'
+result=$(read_msg "${repo}")
+assert_eq "fix: already typed" "${result}" "explicit type wins; nothing to inject without ticket"
+cleanup_repo "${repo}"
+
+# --- Branch type inference without ticket: unknown prefix exits silently ---
+describe "Branch type inference without ticket: unknown prefix is a no-op"
+repo=$(setup_repo "wibble/no-ticket")
+run_hook "${repo}" "did stuff" $'infer_type_from_branch=true\nignore_missing_tickets=true'
+result=$(read_msg "${repo}")
+assert_eq "did stuff" "${result}" "no ticket + unknown prefix -> message left untouched"
+cleanup_repo "${repo}"
+
+# --- Missing ticket without inference still passes through silently ---
+describe "Missing ticket with ignore_missing_tickets and no inference is a no-op"
+repo=$(setup_repo "feat/my-branch")
+run_hook "${repo}" "did stuff" "ignore_missing_tickets=true"
+result=$(read_msg "${repo}")
+assert_eq "did stuff" "${result}" "no inference -> message left untouched even on typed branch"
+cleanup_repo "${repo}"
+
 # ============================================================================
 # Summary
 # ============================================================================

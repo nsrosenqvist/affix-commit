@@ -8,6 +8,8 @@ ticket_pattern='[A-Z]+-[0-9]+'
 ignored_branches='^(master|main|dev|develop|development|release)$'
 ignore_missing_tickets=false
 default_type=chore
+infer_type_from_branch=false
+branch_type_map='feat:feat,fix:fix,chore:chore,refactor:refactor,docs:docs,test:test,style:style,perf:perf,build:build,ci:ci,revert:revert,feature:feat,bugfix:fix,hotfix:fix'
 
 # --- Config loading ---
 load_config() {
@@ -27,7 +29,7 @@ load_config() {
     # Allow regex metacharacters (^$|()[]+ etc.) but block command substitution
     # ($(...), `...`) and semicolons.
     local safe_lines
-    safe_lines=$(grep -E '^\s*(ticket_pattern|ignored_branches|ignore_missing_tickets|default_type)\s*=' "$config_file" \
+    safe_lines=$(grep -E '^\s*(ticket_pattern|ignored_branches|ignore_missing_tickets|default_type|infer_type_from_branch|branch_type_map)\s*=' "$config_file" \
       | grep -vE '`|\$\(' \
       | grep -E "^[a-z_]+=['\"]?[^;\`]*['\"]?\s*$" || true)
 
@@ -68,13 +70,39 @@ main() {
     ticket="${BASH_REMATCH[0]}"
   fi
 
+  # Determine the type to use when wrapping non-conventional messages.
+  # When infer_type_from_branch=true, look up the branch prefix (segment before
+  # the first '/') in branch_type_map. `inferred` is true only when the prefix
+  # actually matched an entry in the map (not when we fell back to default_type).
+  local wrap_type="${default_type}"
+  local inferred=false
+  if [[ "${infer_type_from_branch}" == "true" && "${branch}" == */* ]]; then
+    local prefix="${branch%%/*}"
+    local pair key val IFS_old="${IFS}"
+    IFS=','
+    for pair in ${branch_type_map}; do
+      key="${pair%%:*}"
+      val="${pair#*:}"
+      if [[ "${prefix}" == "${key}" && -n "${val}" ]]; then
+        wrap_type="${val}"
+        inferred=true
+        break
+      fi
+    done
+    IFS="${IFS_old}"
+  fi
+
   if [[ -z "${ticket}" ]]; then
-    if [[ "${ignore_missing_tickets}" == "true" ]]; then
-      exit 0
-    else
+    if [[ "${ignore_missing_tickets}" != "true" ]]; then
       echo "sprig-commit: error: no ticket ID found in branch '${branch}'" >&2
       echo "sprig-commit: set ignore_missing_tickets=true in .sprig-commit.cfg to suppress" >&2
       exit 1
+    fi
+    # No ticket, but ignore_missing_tickets=true. Only continue if we
+    # successfully inferred a type from the branch prefix; otherwise there
+    # is nothing meaningful to inject and we exit silently.
+    if [[ "${inferred}" != "true" ]]; then
+      exit 0
     fi
   fi
 
@@ -102,9 +130,16 @@ main() {
     line_num=$((line_num + 1))
   done <<< "${message}"
 
+  # Build the optional scope suffix from the ticket. Empty when there is no
+  # ticket (only possible when type inference is active without a ticket).
+  local scope_suffix=""
+  if [[ -n "${ticket}" ]]; then
+    scope_suffix="(${ticket})"
+  fi
+
   # If no content line found (empty / only comments), generate a conventional commit
   if [[ ${first_line_num} -eq -1 ]]; then
-    local generated="${default_type}(${ticket}): wip"
+    local generated="${wrap_type}${scope_suffix}: wip"
     # Prepend the generated line before any existing content
     if [[ -n "${message}" ]]; then
       printf '%s\n%s\n' "${generated}" "${message}" > "${commit_msg_file}"
@@ -115,7 +150,7 @@ main() {
   fi
 
   # If the ticket is already in the message, skip
-  if grep -qF "${ticket}" <<< "${message}"; then
+  if [[ -n "${ticket}" ]] && grep -qF "${ticket}" <<< "${message}"; then
     exit 0
   fi
 
@@ -125,6 +160,12 @@ main() {
   local type scope bang msg new_line
 
   if [[ "${first_line}" =~ ${cc_pattern} ]]; then
+    # Already conventional. Without a ticket there is nothing to inject —
+    # the user's explicit type wins over branch inference, so leave it alone.
+    if [[ -z "${ticket}" ]]; then
+      exit 0
+    fi
+
     type="${BASH_REMATCH[1]}"
     scope="${BASH_REMATCH[3]:-}"
     bang="${BASH_REMATCH[4]:-}"
@@ -137,7 +178,7 @@ main() {
     fi
   else
     # Not a conventional commit — wrap it in one
-    new_line="${default_type}(${ticket}): ${first_line}"
+    new_line="${wrap_type}${scope_suffix}: ${first_line}"
   fi
 
   # Replace the first content line in the file, preserving all other lines

@@ -40,6 +40,8 @@ if [[ ! -f "${config_path}" ]]; then
 # ignored_branches='^(master|main|dev|develop|development|release)$'
 # ignore_missing_tickets=false
 # default_type=chore
+# infer_type_from_branch=false
+# branch_type_map='feat:feat,fix:fix,chore:chore,refactor:refactor,docs:docs,test:test,style:style,perf:perf,build:build,ci:ci,revert:revert,feature:feat,bugfix:fix,hotfix:fix'
 EOF
   echo "sprig-commit: created ${config_path} (edit to customize)"
 fi

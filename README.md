@@ -98,6 +98,14 @@ ignore_missing_tickets=false
 # Conventional commit type to use when the message is not already conventional
 # Default: chore  (e.g., "fixed bug" → "chore(TICKET): fixed bug")
 default_type=chore
+
+# Infer the commit type from the branch prefix (segment before the first '/')
+# when the message is not already conventional. Default: false.
+infer_type_from_branch=false
+
+# Map of branch prefixes to commit types (used when infer_type_from_branch=true).
+# Unknown prefixes fall back to default_type.
+branch_type_map='feat:feat,fix:fix,chore:chore,refactor:refactor,docs:docs,test:test,style:style,perf:perf,build:build,ci:ci,revert:revert,feature:feat,bugfix:fix,hotfix:fix'
 ```
 
 ### Config search order
@@ -114,6 +122,8 @@ default_type=chore
 | `ignored_branches` | `^(master\|main\|dev\|develop\|development\|release)$` | Regex for branches to skip entirely. The hook exits silently on matching branches. |
 | `ignore_missing_tickets` | `false` | When `true`, the hook exits silently if no ticket is found. When `false`, exits with an error. |
 | `default_type` | `chore` | Conventional commit type used when wrapping non-conventional messages or generating empty commit placeholders. |
+| `infer_type_from_branch` | `false` | When `true`, infer the commit type from the branch prefix (segment before the first `/`) using `branch_type_map`. Falls back to `default_type` when the prefix is unknown or there is no `/`. Explicit conventional types in the message always win. |
+| `branch_type_map` | *(see below)* | Comma-separated `prefix:type` pairs used by `infer_type_from_branch`. Default: `feat:feat,fix:fix,chore:chore,refactor:refactor,docs:docs,test:test,style:style,perf:perf,build:build,ci:ci,revert:revert,feature:feat,bugfix:fix,hotfix:fix`. |
 
 ## Behavior details
 
@@ -135,6 +145,7 @@ All commit messages are formatted as conventional commits:
 - **Already conventional**: Ticket is added to the scope — `feat: msg` → `feat(TICKET): msg`
 - **Not conventional**: Message is wrapped — `plain text` → `chore(TICKET): plain text` (type is configurable via `default_type`)
 - **Breaking changes**: The `!` marker is preserved — `feat!: msg` → `feat(TICKET)!: msg`
+- **Branch-derived type** *(opt-in)*: With `infer_type_from_branch=true`, the type is taken from the branch prefix — e.g., `feature/PROJ-1-x` + `did stuff` → `feat(PROJ-1): did stuff`. An explicit type in the message still wins. When combined with `ignore_missing_tickets=true`, the type is also injected on branches without a ticket — e.g., `feat/foobar` + `My message` → `feat: My message`.
 
 ### Edge cases
 
