@@ -40,7 +40,6 @@ AGENTS.md             # This file
 
 ## Development Guidelines
 
-- Keep the script under 150 lines. If it grows beyond that, something is being over-engineered.
 - All changes must pass `bash test/test.sh` and `shellcheck sprig-commit install.sh test/test.sh`.
 - No external dependencies. If a feature requires `jq`, `python`, `node`, or any non-POSIX tool, it doesn't belong here.
 - Support bash 3.2 (macOS default). Avoid bash 4+ features like associative arrays, `readarray`, or `${var,,}` lowercasing.
