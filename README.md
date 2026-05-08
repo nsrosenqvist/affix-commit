@@ -71,6 +71,25 @@ Or keep the script in your repo and reference it:
 exec ./scripts/sprig-commit "$1"
 ```
 
+### With pre-commit
+
+Add to `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/nsrosenqvist/sprig-commit
+    rev: v1
+    hooks:
+      - id: sprig-commit
+        stages: [prepare-commit-msg]
+```
+
+Then install the prepare-commit-msg hook (the default `pre-commit install` only sets up the pre-commit stage):
+
+```bash
+pre-commit install --hook-type prepare-commit-msg
+```
+
 ### Shared via repository
 
 To share the hook with your team, commit the script to your repo (e.g., `scripts/sprig-commit`) and have each developer symlink or copy it:
