@@ -1,4 +1,4 @@
-# sprig-commit
+# affix-commit
 
 A zero-dependency git hook that extracts ticket IDs from branch names and injects them into [conventional commit](https://www.conventionalcommits.org/) message scopes.
 
@@ -8,13 +8,13 @@ You type:  feat: add login page
 You get:   feat(PROJ-123): add login page
 ```
 
-**Why?** Linking commits to issue trackers (Jira, Linear, etc.) is valuable but tedious. `sprig-commit` automates it at commit time — no plugins, no runtime dependencies, just a single bash script.
+**Why?** Linking commits to issue trackers (Jira, Linear, etc.) is valuable but tedious. `affix-commit` automates it at commit time — no plugins, no runtime dependencies, just a single bash script.
 
-Looking to *enforce* the conventional commit format as well? See the companion project [sprig-lint](https://github.com/nsrosenqvist/sprig-lint) — same philosophy, different hook. They compose cleanly (sprig-commit on `prepare-commit-msg`, sprig-lint on `commit-msg`) but each works on its own.
+Looking to *enforce* the conventional commit format as well? See the companion project [affix-lint](https://github.com/nsrosenqvist/affix-lint) — same philosophy, different hook. They compose cleanly (affix-commit on `prepare-commit-msg`, affix-lint on `commit-msg`) but each works on its own.
 
 ## How it works
 
-`sprig-commit` runs as a git `prepare-commit-msg` hook. When you commit:
+`affix-commit` runs as a git `prepare-commit-msg` hook. When you commit:
 
 1. Reads the current branch name
 2. Extracts a ticket ID using a configurable regex (default: `[A-Z]+-[0-9]+`)
@@ -39,19 +39,19 @@ Non-conventional messages are automatically wrapped: `fixed the bug` → `chore(
 Run from inside your git repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nsrosenqvist/sprig-commit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nsrosenqvist/affix-commit/main/install.sh | bash
 ```
 
-This places the hook at `.git/hooks/prepare-commit-msg` and creates a template `.sprig-commit.cfg`.
+This places the hook at `.git/hooks/prepare-commit-msg` and creates a template `.affix-commit.cfg`.
 
 ### Manual install
 
-1. Download the `sprig-commit` script
+1. Download the `affix-commit` script
 2. Copy it to `.git/hooks/prepare-commit-msg`
 3. Make it executable:
 
 ```bash
-cp sprig-commit .git/hooks/prepare-commit-msg
+cp affix-commit .git/hooks/prepare-commit-msg
 chmod +x .git/hooks/prepare-commit-msg
 ```
 
@@ -61,14 +61,14 @@ If you use [Husky](https://typicode.github.io/husky/) to manage git hooks, add t
 
 ```bash
 #!/usr/bin/env bash
-exec ./sprig-commit "$1"
+exec ./affix-commit "$1"
 ```
 
 Or keep the script in your repo and reference it:
 
 ```bash
 #!/usr/bin/env bash
-exec ./scripts/sprig-commit "$1"
+exec ./scripts/affix-commit "$1"
 ```
 
 ### With pre-commit
@@ -77,10 +77,10 @@ Add to `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/nsrosenqvist/sprig-commit
+  - repo: https://github.com/nsrosenqvist/affix-commit
     rev: v1
     hooks:
-      - id: sprig-commit
+      - id: affix-commit
         stages: [prepare-commit-msg]
 ```
 
@@ -92,15 +92,15 @@ pre-commit install --hook-type prepare-commit-msg
 
 ### Shared via repository
 
-To share the hook with your team, commit the script to your repo (e.g., `scripts/sprig-commit`) and have each developer symlink or copy it:
+To share the hook with your team, commit the script to your repo (e.g., `scripts/affix-commit`) and have each developer symlink or copy it:
 
 ```bash
-ln -sf ../../scripts/sprig-commit .git/hooks/prepare-commit-msg
+ln -sf ../../scripts/affix-commit .git/hooks/prepare-commit-msg
 ```
 
 ## Configuration
 
-Create a `.sprig-commit.cfg` file at the root of your repository or at `~/.sprig-commit.cfg` (global fallback). The format is simple key=value:
+Create a `.affix-commit.cfg` file at the root of your repository or at `~/.affix-commit.cfg` (global fallback). The format is simple key=value:
 
 ```bash
 # Regex to extract ticket ID from branch name
@@ -131,8 +131,8 @@ branch_type_map='feat:feat,fix:fix,chore:chore,refactor:refactor,docs:docs,test:
 
 ### Config search order
 
-1. `.sprig-commit.cfg` in the repository root (found via `git rev-parse --show-toplevel`)
-2. `~/.sprig-commit.cfg` (user-global fallback)
+1. `.affix-commit.cfg` in the repository root (found via `git rev-parse --show-toplevel`)
+2. `~/.affix-commit.cfg` (user-global fallback)
 3. Built-in defaults
 
 ### Options reference
@@ -213,7 +213,7 @@ The tests create temporary git repositories, run the hook against various scenar
 For development, also run ShellCheck:
 
 ```bash
-shellcheck sprig-commit install.sh test/test.sh
+shellcheck affix-commit install.sh test/test.sh
 ```
 
 ## License
@@ -222,4 +222,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## See also
 
-- [sprig-lint](https://github.com/nsrosenqvist/sprig-lint) — companion git hook that validates commit messages against the Conventional Commits spec.
+- [affix-lint](https://github.com/nsrosenqvist/affix-lint) — companion git hook that validates commit messages against the Conventional Commits spec.

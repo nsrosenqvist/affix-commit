@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Minimal bash test framework for sprig-commit
+# Minimal bash test framework for affix-commit
 set -euo pipefail
 
 # --- State ---

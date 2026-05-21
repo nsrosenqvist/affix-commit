@@ -2,7 +2,7 @@
 
 ## North Star
 
-**sprig-commit** exists to eliminate the friction of linking commits to issue trackers. Developers should never have to manually type a ticket ID into a commit message — the branch name already has it. This tool bridges that gap with zero dependencies and zero configuration overhead: a single bash script that runs as a git hook.
+**affix-commit** exists to eliminate the friction of linking commits to issue trackers. Developers should never have to manually type a ticket ID into a commit message — the branch name already has it. This tool bridges that gap with zero dependencies and zero configuration overhead: a single bash script that runs as a git hook.
 
 The core value proposition: **adopt in 30 seconds, never think about it again.** Every design decision should optimize for simplicity, reliability, and staying out of the developer's way. If a feature adds complexity without meaningfully reducing friction, it doesn't belong here.
 
@@ -11,17 +11,17 @@ The core value proposition: **adopt in 30 seconds, never think about it again.**
 ## Project Overview
 
 - **Language**: Bash (3.2+ compatible)
-- **Entry point**: `sprig-commit` — a self-contained bash script used as a git `prepare-commit-msg` hook
-- **Config**: `.sprig-commit.cfg` (key=value format, searched in repo root then `$HOME`)
+- **Entry point**: `affix-commit` — a self-contained bash script used as a git `prepare-commit-msg` hook
+- **Config**: `.affix-commit.cfg` (key=value format, searched in repo root then `$HOME`)
 - **Tests**: `test/test.sh` using a minimal framework in `test/framework.sh`
 - **Installer**: `install.sh` — curl-friendly script that sets up the hook
 
 ## File Structure
 
 ```
-sprig-commit          # Main script (the hook itself)
+affix-commit          # Main script (the hook itself)
 install.sh            # curl-pipe installer
-.sprig-commit.cfg     # Example/template config
+.affix-commit.cfg     # Example/template config
 test/
   framework.sh        # Minimal bash test framework (assert_eq, assert_contains, etc.)
   test.sh             # Test suite
@@ -40,7 +40,7 @@ AGENTS.md             # This file
 
 ## Development Guidelines
 
-- All changes must pass `bash test/test.sh` and `shellcheck sprig-commit install.sh test/test.sh`.
+- All changes must pass `bash test/test.sh` and `shellcheck affix-commit install.sh test/test.sh`.
 - No external dependencies. If a feature requires `jq`, `python`, `node`, or any non-POSIX tool, it doesn't belong here.
 - Support bash 3.2 (macOS default). Avoid bash 4+ features like associative arrays, `readarray`, or `${var,,}` lowercasing.
 
@@ -50,7 +50,7 @@ Before merging any change, run:
 
 ```bash
 # 1. Lint (requires shellcheck installed: brew install shellcheck)
-shellcheck sprig-commit install.sh test/test.sh
+shellcheck affix-commit install.sh test/test.sh
 
 # 2. Unit tests
 bash test/test.sh

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# sprig-commit test suite
+# affix-commit test suite
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SPRIG_COMMIT="${PROJECT_DIR}/sprig-commit"
+AFFIX_COMMIT="${PROJECT_DIR}/affix-commit"
 
 # shellcheck source=test/framework.sh
 source "${SCRIPT_DIR}/framework.sh"
@@ -30,7 +30,7 @@ setup_repo() {
   echo "${tmp}"
 }
 
-# Write a commit message file and run sprig-commit against it
+# Write a commit message file and run affix-commit against it
 # Usage: run_hook <repo_path> <message> [config_content]
 # Returns: exit code; modifies $hook_output and the commit message file
 run_hook() {
@@ -42,13 +42,13 @@ run_hook() {
   printf '%s' "${message}" > "${msg_file}"
 
   if [[ -n "${config}" ]]; then
-    printf '%s\n' "${config}" > "${repo}/.sprig-commit.cfg"
+    printf '%s\n' "${config}" > "${repo}/.affix-commit.cfg"
   else
-    rm -f "${repo}/.sprig-commit.cfg"
+    rm -f "${repo}/.affix-commit.cfg"
   fi
 
   local exit_code=0
-  (cd "${repo}" && bash "${SPRIG_COMMIT}" "${msg_file}" 2>&1) || exit_code=$?
+  (cd "${repo}" && bash "${AFFIX_COMMIT}" "${msg_file}" 2>&1) || exit_code=$?
 
   return ${exit_code}
 }
@@ -234,7 +234,7 @@ cleanup_repo "${repo}"
 describe "No arguments provided"
 repo=$(setup_repo "feature/PROJ-123-test")
 exit_code=0
-(cd "${repo}" && bash "${SPRIG_COMMIT}" 2>/dev/null) || exit_code=$?
+(cd "${repo}" && bash "${AFFIX_COMMIT}" 2>/dev/null) || exit_code=$?
 assert_eq "1" "${exit_code}" "exits with code 1 when no file arg"
 cleanup_repo "${repo}"
 
@@ -261,11 +261,11 @@ describe "Config from home directory fallback"
 repo=$(setup_repo "feature/proj-999-home-config")
 # Write config to a temporary HOME
 fake_home="$(mktemp -d)"
-printf "ticket_pattern='[a-z]+-[0-9]+'\n" > "${fake_home}/.sprig-commit.cfg"
+printf "ticket_pattern='[a-z]+-[0-9]+'\n" > "${fake_home}/.affix-commit.cfg"
 msg_file="${repo}/.git/COMMIT_EDITMSG"
 printf '%s' "feat: change" > "${msg_file}"
-rm -f "${repo}/.sprig-commit.cfg"
-(cd "${repo}" && HOME="${fake_home}" bash "${SPRIG_COMMIT}" "${msg_file}" 2>&1) || true
+rm -f "${repo}/.affix-commit.cfg"
+(cd "${repo}" && HOME="${fake_home}" bash "${AFFIX_COMMIT}" "${msg_file}" 2>&1) || true
 result=$(cat "${msg_file}")
 assert_eq "feat(proj-999): change" "${result}" "config loaded from HOME fallback"
 rm -rf "${fake_home}"
@@ -279,7 +279,7 @@ git -C "${repo}" checkout --detach --quiet
 msg_file="${repo}/.git/COMMIT_EDITMSG"
 printf '%s' "feat: change" > "${msg_file}"
 exit_code=0
-(cd "${repo}" && bash "${SPRIG_COMMIT}" "${msg_file}" 2>&1) || exit_code=$?
+(cd "${repo}" && bash "${AFFIX_COMMIT}" "${msg_file}" 2>&1) || exit_code=$?
 result=$(cat "${msg_file}")
 assert_eq "0" "${exit_code}" "exits with 0 on detached HEAD"
 assert_eq "feat: change" "${result}" "message unchanged on detached HEAD"
@@ -290,11 +290,11 @@ describe "Config security: command injection rejected"
 repo=$(setup_repo "feature/PROJ-123-security")
 # Write a malicious config
 # shellcheck disable=SC2016
-printf 'ticket_pattern=$(echo pwned)\n' > "${repo}/.sprig-commit.cfg"
+printf 'ticket_pattern=$(echo pwned)\n' > "${repo}/.affix-commit.cfg"
 msg_file="${repo}/.git/COMMIT_EDITMSG"
 printf '%s' "feat: change" > "${msg_file}"
 # Should use default pattern (malicious line filtered out)
-(cd "${repo}" && bash "${SPRIG_COMMIT}" "${msg_file}" 2>&1) || true
+(cd "${repo}" && bash "${AFFIX_COMMIT}" "${msg_file}" 2>&1) || true
 result=$(cat "${msg_file}")
 assert_eq "feat(PROJ-123): change" "${result}" "malicious config line filtered, default used"
 cleanup_repo "${repo}"

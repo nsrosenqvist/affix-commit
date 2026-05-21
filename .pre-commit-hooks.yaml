@@ -1,6 +1,6 @@
-- id: sprig-commit
-  name: sprig-commit
+- id: affix-commit
+  name: affix-commit
   description: Inject ticket IDs from branch names into conventional commit scopes
-  entry: sprig-commit
+  entry: affix-commit
   language: script
   stages: [prepare-commit-msg]

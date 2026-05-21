@@ -31,16 +31,16 @@ jobs:
 
       - name: Run tests and shellcheck
         run: |
-          shellcheck -x sprig-commit install.sh test/test.sh
+          shellcheck -x affix-commit install.sh test/test.sh
           bash test/test.sh
 
       - name: Stage release artifacts
         run: |
           mkdir -p artifacts
-          cp sprig-commit artifacts/sprig-commit
+          cp affix-commit artifacts/affix-commit
           cp install.sh   artifacts/install.sh
           cd artifacts
-          sha256sum sprig-commit install.sh > SHA256SUMS
+          sha256sum affix-commit install.sh > SHA256SUMS
 
       - name: Generate release notes
         uses: nsrosenqvist/chronikl@v1
@@ -59,7 +59,7 @@ jobs:
           body_path: release_notes.md
           prerelease: ${{ steps.detect.outputs.is_prerelease == 'true' }}
           files: |
-            artifacts/sprig-commit
+            artifacts/affix-commit
             artifacts/install.sh
             artifacts/SHA256SUMS
 

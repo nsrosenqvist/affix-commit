@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# sprig-commit installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/nsrosenqvist/sprig-commit/main/install.sh | bash
+# affix-commit installer
+# Usage: curl -fsSL https://raw.githubusercontent.com/nsrosenqvist/affix-commit/main/install.sh | bash
 set -euo pipefail
 
-SCRIPT_URL="https://raw.githubusercontent.com/nsrosenqvist/sprig-commit/main/sprig-commit"
+SCRIPT_URL="https://raw.githubusercontent.com/nsrosenqvist/affix-commit/main/affix-commit"
 
-echo "sprig-commit: installing..."
+echo "affix-commit: installing..."
 
 # Ensure we're in a git repository
 if ! git rev-parse --show-toplevel &>/dev/null; then
@@ -30,11 +30,11 @@ fi
 chmod +x "${hook_path}"
 
 # Create template config if none exists
-config_path="${repo_root}/.sprig-commit.cfg"
+config_path="${repo_root}/.affix-commit.cfg"
 if [[ ! -f "${config_path}" ]]; then
   cat > "${config_path}" << 'EOF'
-# sprig-commit configuration
-# See https://github.com/nsrosenqvist/sprig-commit for details
+# affix-commit configuration
+# See https://github.com/nsrosenqvist/affix-commit for details
 
 # ticket_pattern='[A-Z]+-[0-9]+'
 # ignored_branches='^(master|main|dev|develop|development|release)$'
@@ -43,8 +43,8 @@ if [[ ! -f "${config_path}" ]]; then
 # infer_type_from_branch=false
 # branch_type_map='feat:feat,fix:fix,chore:chore,refactor:refactor,docs:docs,test:test,style:style,perf:perf,build:build,ci:ci,revert:revert,feature:feat,bugfix:fix,hotfix:fix'
 EOF
-  echo "sprig-commit: created ${config_path} (edit to customize)"
+  echo "affix-commit: created ${config_path} (edit to customize)"
 fi
 
-echo "sprig-commit: installed to ${hook_path}"
-echo "sprig-commit: done!"
+echo "affix-commit: installed to ${hook_path}"
+echo "affix-commit: done!"
